@@ -1,0 +1,29 @@
+apiVersion: v2
+name: common
+description: |
+  Helm library chart providing reusable templates and utilities for Kubernetes applications.
+type: library
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/m-amaresh/helm-charts
+sources:
+  - https://github.com/m-amaresh/helm-charts/tree/main/common
+keywords:
+  - common
+  - library
+  - templates
+  - kubernetes
+  - cloud-native
+  - security
+  - monitoring
+  - enterprise
+annotations:
+  category: Infrastructure
+  licenses: Apache-2.0
+  disclaimer: |
+    DISCLAIMER: This library chart is provided "AS IS" without warranty of any kind.
+    Community-maintained and not affiliated with any official project.
+    Use at your own risk in production environments.
+  support: |
+    This chart is provided without official support.
+    For issues, use the project's GitHub repository.

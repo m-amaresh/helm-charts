@@ -1,0 +1,110 @@
+name: ❓ Question / Support
+description: Ask a question about using the Helm charts
+title: "[QUESTION] "
+labels: ["question", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ DISCLAIMER**: These are unofficial, community-maintained charts.
+        
+        **📚 Before asking**: Please check the [README documentation](../README.md) and existing issues first.
+        
+        **🔗 For application-specific questions**: Please refer to the official documentation of the respective application.
+
+  - type: dropdown
+    id: chart
+    attributes:
+      label: Chart Name
+      description: Which chart is your question about?
+      options:
+        - redis
+        - redis-cluster
+        - common
+        - General question
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: chart-version
+    attributes:
+      label: Chart Version
+      description: Which version of the chart are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: Question Type
+      description: What type of question is this?
+      options:
+        - Configuration / Values
+        - Installation / Deployment
+        - Troubleshooting
+        - Best Practices
+        - Performance
+        - Security
+        - Upgrading
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: Please describe your question in detail...
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Please provide context about your environment and what you're trying to achieve
+      placeholder: |
+        - Kubernetes version: 
+        - Environment type (dev/staging/prod):
+        - What you're trying to accomplish:
+        - Any specific requirements or constraints:
+    validations:
+      required: false
+
+  - type: textarea
+    id: current-config
+    attributes:
+      label: Current Configuration
+      description: Please share your current configuration (remove sensitive data)
+      render: yaml
+      placeholder: |
+        # Your current values.yaml or helm install command
+        myapp:
+          architecture: standalone
+    validations:
+      required: false
+
+  - type: textarea
+    id: attempted-solutions
+    attributes:
+      label: What Have You Tried?
+      description: What have you already tried to solve this?
+      placeholder: Describe any solutions or approaches you've already attempted...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you have completed the following
+      options:
+        - label: I have searched existing issues and documentation
+          required: true
+        - label: This question is about the Helm chart, not the underlying application software
+          required: true
+        - label: I understand this is an unofficial, community-maintained chart
+          required: true

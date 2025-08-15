@@ -1,0 +1,182 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior in the Helm charts
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ DISCLAIMER**: These are unofficial, community-maintained charts.
+        
+        Thank you for taking the time to report a bug! Please fill out the information below to help us diagnose and fix the issue.
+
+  - type: dropdown
+    id: chart
+    attributes:
+      label: Chart Name
+      description: Which chart is experiencing the issue?
+      options:
+        - redis
+        - redis-cluster
+        - common
+      default: 0
+    validations:
+      required: true
+
+  - type: input
+    id: chart-version
+    attributes:
+      label: Chart Version
+      description: Which version of the chart are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Application Version
+      description: Which application version is being deployed?
+      placeholder: "8.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: helm-version
+    attributes:
+      label: Helm Version
+      description: Which version of Helm are you using?
+      placeholder: "3.14.0"
+    validations:
+      required: true
+
+  - type: input
+    id: kubernetes-version
+    attributes:
+      label: Kubernetes Version
+      description: Which version of Kubernetes are you running?
+      placeholder: "1.29.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: What type of environment are you running?
+      options:
+        - Development
+        - Staging
+        - Production
+        - Local (kind/minikube/docker-desktop)
+        - Cloud (EKS/GKE/AKS)
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Application Architecture
+      description: Which application architecture are you using?
+      options:
+        - Standalone
+        - Master-Replica (replication)
+        - Not applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe the issue you're experiencing...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: Describe what you expected to happen...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Describe what actually happened...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide detailed steps to reproduce the issue
+      placeholder: |
+        1. Install chart with command: `helm install ...`
+        2. Configure with values: ...
+        3. Observe behavior: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: values-yaml
+    attributes:
+      label: Values Configuration
+      description: Please provide your values.yaml or relevant configuration (remove sensitive data)
+      render: yaml
+      placeholder: |
+        # Your values.yaml content here
+        myapp:
+          auth:
+            enabled: true
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Please provide relevant error logs, kubectl output, or error messages
+      render: shell
+      placeholder: |
+        # Kubectl logs
+        kubectl logs pod-name
+        
+        # Kubectl describe
+        kubectl describe pod pod-name
+        
+        # Helm status
+        helm status release-name
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here
+      placeholder: Any additional information that might be helpful...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you have completed the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have removed or masked any sensitive information from logs and configurations
+          required: true
+        - label: I understand this is an unofficial, community-maintained chart
+          required: true
+        - label: I have tested with the latest chart version available
+          required: false

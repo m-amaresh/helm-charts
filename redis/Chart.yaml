@@ -1,0 +1,27 @@
+apiVersion: v2
+name: redis
+description: |
+  Redis Helm chart supporting standalone and master-replica deployments.
+  This chart is not affiliated with or endorsed by Redis Ltd.
+  Uses official Redis OSS container images. Simple, reliable, and production-ready.
+type: application
+version: 0.0.1
+appVersion: "8.2.0"
+home: https://github.com/m-amaresh/helm-charts
+sources:
+  - https://github.com/m-amaresh/helm-charts/tree/main/redis
+keywords:
+  - redis
+  - keyvalue
+  - database
+  - cache
+  - nosql
+  - master-replica
+  - replication
+dependencies:
+  - name: common
+    version: "1.0.0"
+    repository: "oci://ghcr.io/m-amaresh/helm-charts"
+annotations:
+  category: Database
+  licenses: Apache-2.0

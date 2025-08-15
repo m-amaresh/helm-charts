@@ -1,0 +1,28 @@
+apiVersion: v2
+name: redis-cluster
+description: |
+  Redis Cluster Helm chart for high-availability distributed deployments.
+  This chart is not affiliated with or endorsed by Redis Ltd.
+  Uses official Redis OSS container images. Production-ready Redis cluster with automatic sharding.
+type: application
+version: 0.0.1
+appVersion: "8.2.0"
+home: https://github.com/m-amaresh/helm-charts
+sources:
+  - https://github.com/m-amaresh/helm-charts/tree/main/redis-cluster
+keywords:
+  - redis
+  - keyvalue
+  - database
+  - cache
+  - nosql
+  - cluster
+  - distributed
+  - sharding
+dependencies:
+  - name: common
+    version: "1.0.0"
+    repository: "oci://ghcr.io/m-amaresh/helm-charts"
+annotations:
+  category: Database
+  licenses: Apache-2.0

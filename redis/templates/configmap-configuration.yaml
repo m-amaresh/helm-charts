@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-configuration
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  startup.sh: |-
+    #!/bin/sh
+    set -e
+    mkdir -p /data /tmp
+    
+    if [ -f /opt/redis-config/redis.conf ]; then
+      cp /opt/redis-config/redis.conf /tmp/redis.conf
+    else
+      touch /tmp/redis.conf
+      echo "port {{ .Values.redis.containerPorts.redis }}" >> /tmp/redis.conf
+      echo "dir /data" >> /tmp/redis.conf
+    fi
+    
+    {{- if .Values.auth.enabled }}
+    echo "" >> /tmp/redis.conf
+    echo "requirepass $REDIS_PASSWORD" >> /tmp/redis.conf
+    {{- end }}
+    
+    exec redis-server /tmp/redis.conf
+  startup-master.sh: |-
+    #!/bin/sh
+    set -e
+    mkdir -p /data /tmp
+    
+    if [ -f /opt/redis-config/redis.conf ]; then
+      cp /opt/redis-config/redis.conf /tmp/redis.conf
+    else
+      touch /tmp/redis.conf
+      echo "port {{ .Values.master.containerPorts.redis }}" >> /tmp/redis.conf
+      echo "dir /data" >> /tmp/redis.conf
+    fi
+    
+    {{- if .Values.auth.enabled }}
+    echo "" >> /tmp/redis.conf
+    echo "requirepass $REDIS_PASSWORD" >> /tmp/redis.conf
+    echo "masterauth $REDIS_PASSWORD" >> /tmp/redis.conf
+    {{- end }}
+    
+    exec redis-server /tmp/redis.conf
+  startup-replica.sh: |-
+    #!/bin/sh
+    set -e
+    mkdir -p /data /tmp
+    
+    if [ -f /opt/redis-config/redis.conf ]; then
+      cp /opt/redis-config/redis.conf /tmp/redis.conf
+    else
+      touch /tmp/redis.conf
+      echo "port {{ .Values.replica.containerPorts.redis }}" >> /tmp/redis.conf
+      echo "dir /data" >> /tmp/redis.conf
+    fi
+    
+    echo "" >> /tmp/redis.conf
+    echo "replicaof {{ include "common.names.fullname" . }}-master-0.{{ include "common.names.fullname" . }}-headless-master.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }} {{ .Values.master.containerPorts.redis }}" >> /tmp/redis.conf
+    
+    {{- if .Values.auth.enabled }}
+    echo "" >> /tmp/redis.conf
+    echo "requirepass $REDIS_PASSWORD" >> /tmp/redis.conf
+    echo "masterauth $REDIS_PASSWORD" >> /tmp/redis.conf
+    {{- end }}
+    
+    exec redis-server /tmp/redis.conf
+  redis.conf: |-
+    {{- if .Values.configuration }}
+    {{ .Values.configuration | nindent 4 }}
+    {{- end }}

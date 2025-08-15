@@ -1,0 +1,164 @@
+{{- include "redis.validateAuth" . -}}
+
+{{- if eq .Values.architecture "standalone" }}
+apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
+kind: StatefulSet
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  serviceName: {{ include "common.names.fullname" . }}-headless
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+        {{- if .Values.redis.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.redis.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap-configuration.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.redis.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.redis.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.commonAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.redis.podSecurityContext.enabled }}
+      securityContext: {{- include "common.security.podSecurityContext" (dict "securityContext" .Values.redis.podSecurityContext "context" .) | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "redis.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.redis.serviceAccount.automountServiceAccountToken }}
+      enableServiceLinks: false
+      containers:
+        - name: redis
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.redis.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.security.containerSecurityContext" (dict "securityContext" .Values.redis.containerSecurityContext "context" .) | nindent 12 }}
+          {{- end }}
+          env:
+            - name: REDIS_REPLICATION_MODE
+              value: standalone
+            {{- if .Values.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis.secretName" . }}
+                  key: {{ include "redis.secretPasswordKey" . }}
+            {{- end }}
+          command:
+            - /opt/redis-config/startup.sh
+          ports:
+            - name: redis
+              containerPort: {{ .Values.redis.containerPorts.redis }}
+              protocol: TCP
+          {{- if .Values.redis.livenessProbe.enabled }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.redis.livenessProbe "enabled") "context" $) | nindent 12 }}
+            exec:
+              command:
+                - sh
+                - -c
+                {{- if .Values.auth.enabled }}
+                - redis-cli -h localhost -p {{ .Values.redis.containerPorts.redis }} -a $REDIS_PASSWORD ping
+                {{- else }}
+                - redis-cli -h localhost -p {{ .Values.redis.containerPorts.redis }} ping
+                {{- end }}
+          {{- end }}
+          {{- if .Values.redis.readinessProbe.enabled }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.redis.readinessProbe "enabled") "context" $) | nindent 12 }}
+            exec:
+              command:
+                - sh
+                - -c
+                {{- if .Values.auth.enabled }}
+                - redis-cli -h localhost -p {{ .Values.redis.containerPorts.redis }} -a $REDIS_PASSWORD ping
+                {{- else }}
+                - redis-cli -h localhost -p {{ .Values.redis.containerPorts.redis }} ping
+                {{- end }}
+          {{- end }}
+          {{- if .Values.redis.startupProbe.enabled }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.redis.startupProbe "enabled") "context" $) | nindent 12 }}
+            exec:
+              command:
+                - sh
+                - -c
+                {{- if .Values.auth.enabled }}
+                - redis-cli -h localhost -p {{ .Values.redis.containerPorts.redis }} -a $REDIS_PASSWORD ping
+                {{- else }}
+                - redis-cli -h localhost -p {{ .Values.redis.containerPorts.redis }} ping
+                {{- end }}
+          {{- end }}
+          {{- if ne .Values.redis.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.redis.resourcesPreset) | nindent 12 }}
+          {{- else if and .Values.redis.resources.limits.memory .Values.redis.resources.limits.cpu }}
+          resources: {{- toYaml .Values.redis.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+            - name: redis-config
+              mountPath: /opt/redis-config
+            # Required writable directories for read-only root filesystem
+            - name: redis-tmp-conf
+              mountPath: /tmp
+      volumes:
+        - name: redis-config
+          configMap:
+            name: {{ include "common.names.fullname" . }}-configuration
+            defaultMode: 0755
+        # Writable directories for read-only root filesystem
+        - name: redis-tmp-conf
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        {{- if .Values.redis.persistence.existingClaim }}
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.redis.persistence.existingClaim }}
+        {{- else if not .Values.redis.persistence.enabled }}
+        - name: redis-data
+          emptyDir:
+            {{- if .Values.redis.persistence.medium }}
+            medium: {{ .Values.redis.persistence.medium }}
+            {{- end }}
+            {{- if .Values.redis.persistence.sizeLimit }}
+            sizeLimit: {{ .Values.redis.persistence.sizeLimit }}
+            {{- end }}
+        {{- end }}
+  {{- if and .Values.redis.persistence.enabled (not .Values.redis.persistence.existingClaim) .Values.redis.persistence.accessModes }}
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: {{- toYaml .Values.redis.persistence.accessModes | nindent 10 }}
+        {{- if .Values.redis.persistence.storageClass }}
+        {{- if (eq "-" .Values.redis.persistence.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.redis.persistence.storageClass | quote }}
+        {{- end }}
+        {{- else if .Values.global.storageClass }}
+        {{- if (eq "-" .Values.global.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.global.storageClass | quote }}
+        {{- end }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.persistence.size | quote }}
+  {{- end }}
+{{- end }}

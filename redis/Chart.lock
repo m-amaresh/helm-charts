@@ -1,0 +1,6 @@
+dependencies:
+- name: common
+  repository: oci://ghcr.io/m-amaresh/helm-charts
+  version: 1.0.0
+digest: sha256:147546ebd738cffc75b7f32f74db0c835ab0f041d66579e0a756d21745259382
+generated: "2025-08-15T20:07:08.235825412Z"

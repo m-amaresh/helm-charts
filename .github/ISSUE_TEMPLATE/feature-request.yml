@@ -1,0 +1,137 @@
+name: 🚀 Feature Request
+description: Suggest a new feature or enhancement for the Helm charts
+title: "[FEATURE] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ DISCLAIMER**: These are unofficial, community-maintained charts.
+        
+        Thank you for suggesting a feature! Please fill out the information below to help us understand your request.
+
+  - type: dropdown
+    id: chart
+    attributes:
+      label: Chart Name
+      description: Which chart would this feature apply to?
+      options:
+        - redis
+        - redis-cluster
+        - common
+        - All charts
+        - New chart
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - New configuration option
+        - New chart functionality
+        - Security enhancement
+        - Performance improvement
+        - Documentation improvement
+        - CI/CD enhancement
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: A clear and concise description of the feature you'd like to see
+      placeholder: Describe the feature you would like to see implemented...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+      placeholder: Describe the problem or use case this feature would address...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: How would you like this feature to work?
+      placeholder: Describe your proposed solution in detail...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What alternative solutions have you considered?
+      placeholder: Describe any alternative solutions or workarounds you've considered...
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation-ideas
+    attributes:
+      label: Implementation Ideas
+      description: Do you have any ideas on how this could be implemented?
+      placeholder: |
+        # Example values.yaml configuration
+        myapp:
+          newFeature:
+            enabled: true
+            configuration: value
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Low - Nice to have
+        - Medium - Would be helpful
+        - High - Important for my use case
+        - Critical - Blocking my adoption
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe your specific use case for this feature
+      placeholder: Explain how you would use this feature and why it's important...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Are you willing to contribute to this feature?
+      options:
+        - label: I would be willing to contribute to implement this feature
+        - label: I can help with testing this feature
+        - label: I can help with documentation for this feature
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm you have completed the following
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I understand this is an unofficial, community-maintained chart
+          required: true
+        - label: This feature request is specific to the Helm chart, not the underlying application software
+          required: true

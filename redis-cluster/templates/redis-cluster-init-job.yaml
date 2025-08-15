@@ -1,0 +1,128 @@
+{{- include "redis-cluster.validateCluster" . -}}
+{{- if .Values.cluster.init.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "common.names.fullname" . }}-init
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: redis-cluster-init
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  activeDeadlineSeconds: 600
+  backoffLimit: 5
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: redis-cluster-init
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "redis-cluster.serviceAccountName" . }}
+      containers:
+        - name: redis-cluster-init
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- if .Values.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis-cluster.secretName" . }}
+                  key: {{ include "redis-cluster.secretPasswordKey" . }}
+            {{- end }}
+          command:
+            - sh
+            - -c
+          args:
+            - |
+              set -e
+              
+              echo "Redis Cluster Initialization Job starting..."
+              
+              # Give StatefulSet pods time to start up
+              echo "Waiting for StatefulSet pods to be scheduled..."
+              sleep 10
+              
+              echo "Waiting for all Redis nodes to be ready..."
+              {{- $fullname := include "common.names.fullname" . }}
+              {{- $namespace := include "common.names.namespace" . }}
+              {{- $nodeCount := int .Values.cluster.nodes }}
+              
+              {{- range $i := until $nodeCount }}
+              echo "Checking {{ $fullname }}-{{ $i }}..."
+              RETRY_COUNT=0
+              MAX_RETRIES=60
+              until redis-cli -h {{ $fullname }}-{{ $i }}.{{ $fullname }}-headless.{{ $namespace }}.svc.{{ $.Values.clusterDomain }} -p 6379 {{- if $.Values.auth.enabled }} -a $REDIS_PASSWORD{{- end }} ping 2>/dev/null | grep -q PONG; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: {{ $fullname }}-{{ $i }} did not become ready after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "Waiting for {{ $fullname }}-{{ $i }}... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep 5
+              done
+              echo "{{ $fullname }}-{{ $i }} is ready"
+              {{- end }}
+              
+              echo "All Redis nodes are ready!"
+              
+              if redis-cli -h {{ $fullname }}-0.{{ $fullname }}-headless.{{ $namespace }}.svc.{{ $.Values.clusterDomain }} -p 6379 {{- if .Values.auth.enabled }} -a $REDIS_PASSWORD{{- end }} cluster info 2>/dev/null | grep -q "cluster_state:ok"; then
+                echo "Cluster already initialized and healthy - nothing to do"
+                exit 0
+              fi
+              
+              echo "Cluster not initialized. Creating Redis cluster..."
+              
+              echo "Resetting cluster state on all nodes..."
+              {{- range $i := until $nodeCount }}
+              echo "Resetting {{ $fullname }}-{{ $i }}..."
+              redis-cli -h {{ $fullname }}-{{ $i }}.{{ $fullname }}-headless.{{ $namespace }}.svc.{{ $.Values.clusterDomain }} -p 6379 {{- if $.Values.auth.enabled }} -a $REDIS_PASSWORD{{- end }} cluster reset hard 2>/dev/null || echo "Node {{ $fullname }}-{{ $i }} cluster reset completed"
+              {{- end }}
+              
+              # Wait a moment for cluster reset to complete
+              echo "Waiting for cluster reset to complete..."
+              sleep 5
+              
+              echo "Creating Redis cluster..."
+              CLUSTER_CREATE_ATTEMPTS=0
+              MAX_CLUSTER_ATTEMPTS=3
+              
+              while [ $CLUSTER_CREATE_ATTEMPTS -lt $MAX_CLUSTER_ATTEMPTS ]; do
+                CLUSTER_CREATE_ATTEMPTS=$((CLUSTER_CREATE_ATTEMPTS + 1))
+                echo "Cluster creation attempt $CLUSTER_CREATE_ATTEMPTS/$MAX_CLUSTER_ATTEMPTS"
+                
+                if redis-cli --cluster create \
+                  {{- range $i := until $nodeCount }}
+                  {{ $fullname }}-{{ $i }}.{{ $fullname }}-headless.{{ $namespace }}.svc.{{ $.Values.clusterDomain }}:6379 \
+                  {{- end }}
+                  --cluster-replicas {{ .Values.cluster.replicas }} \
+                  {{- if .Values.auth.enabled }}
+                  -a $REDIS_PASSWORD \
+                  {{- end }}
+                  --cluster-yes; then
+                  echo "Cluster creation successful!"
+                  break
+                else
+                  echo "Cluster creation failed, attempt $CLUSTER_CREATE_ATTEMPTS/$MAX_CLUSTER_ATTEMPTS"
+                  if [ $CLUSTER_CREATE_ATTEMPTS -lt $MAX_CLUSTER_ATTEMPTS ]; then
+                    echo "Waiting before retry..."
+                    sleep 10
+                  else
+                    echo "All cluster creation attempts failed"
+                    exit 1
+                  fi
+                fi
+              done
+              
+              echo "Redis cluster initialization completed successfully!"
+              
+              echo "Waiting for cluster to stabilize..."
+              sleep 5
+              
+              echo "Verifying cluster status..."
+              redis-cli -h {{ $fullname }}-0.{{ $fullname }}-headless.{{ $namespace }}.svc.{{ $.Values.clusterDomain }} -p 6379 {{- if .Values.auth.enabled }} -a $REDIS_PASSWORD{{- end }} cluster info
+              
+              echo "Redis Cluster Initialization Job completed!"
+{{- end }}

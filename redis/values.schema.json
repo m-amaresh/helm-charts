@@ -1,0 +1,315 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Redis Helm Chart Values Schema",
+  "$defs": {
+    "portConfig": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "default": 6379
+    },
+    "labelsAnnotations": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "default": {}
+    },
+    "resourceConfig": {
+      "type": "object",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "memory": {"type": "string"},
+            "cpu": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "requests": {
+          "type": "object",
+          "properties": {
+            "memory": {"type": "string"},
+            "cpu": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "persistenceConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "storageClass": {"type": "string"},
+        "accessModes": {"type": "array", "items": {"type": "string"}, "default": ["ReadWriteOnce"]},
+        "size": {"type": "string", "default": "8Gi"},
+        "existingClaim": {"type": "string"},
+        "selector": {"type": "object", "additionalProperties": true},
+        "annotations": {"$ref": "#/$defs/labelsAnnotations"},
+        "medium": {"type": "string"},
+        "sizeLimit": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "securityContext": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "fsGroup": {"type": "integer", "minimum": 0, "maximum": 65535, "default": 1001},
+        "runAsUser": {"type": "integer", "minimum": 0, "maximum": 65535, "default": 1001},
+        "runAsGroup": {"type": "integer", "minimum": 0, "maximum": 65535, "default": 1001},
+        "runAsNonRoot": {"type": "boolean", "default": true},
+        "allowPrivilegeEscalation": {"type": "boolean", "default": false},
+        "readOnlyRootFilesystem": {"type": "boolean", "default": true},
+        "privileged": {"type": "boolean", "default": false},
+        "fsGroupChangePolicy": {"type": "string"},
+        "supplementalGroups": {"type": "array", "items": {"type": "integer"}},
+        "sysctls": {"type": "array", "items": {"type": "object"}},
+        "seccompProfile": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string", "enum": ["RuntimeDefault", "Localhost", "Unconfined"], "default": "RuntimeDefault"}
+          }
+        },
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "drop": {"type": "array", "items": {"type": "string"}, "default": ["ALL"]}
+          }
+        }
+      }
+    },
+    "serviceConfig": {
+      "type": "object",
+      "properties": {
+        "type": {"type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"], "default": "ClusterIP"},
+        "ports": {
+          "type": "object",
+          "properties": {
+            "redis": {"$ref": "#/$defs/portConfig"}
+          }
+        },
+        "annotations": {"$ref": "#/$defs/labelsAnnotations"}
+      }
+    },
+    "probeConfig": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": true},
+        "initialDelaySeconds": {"type": "integer", "minimum": 0, "default": 20},
+        "periodSeconds": {"type": "integer", "minimum": 1, "default": 5},
+        "timeoutSeconds": {"type": "integer", "minimum": 1, "default": 5},
+        "failureThreshold": {"type": "integer", "minimum": 1, "default": 5},
+        "successThreshold": {"type": "integer", "minimum": 1, "default": 1},
+        "command": {"type": "array", "items": {"type": "string"}},
+        "exec": {
+          "type": "object",
+          "properties": {
+            "command": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "httpGet": {
+          "type": "object",
+          "properties": {
+            "path": {"type": "string"},
+            "port": {"type": "string"},
+            "scheme": {"type": "string"}
+          }
+        },
+        "tcpSocket": {
+          "type": "object",
+          "properties": {
+            "port": {"type": "string"}
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "global": {
+      "type": "object",
+      "properties": {
+        "imageRegistry": {"type": "string"},
+        "imagePullSecrets": {"type": "array", "items": {"type": "string"}},
+        "storageClass": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "nameOverride": {"type": "string"},
+    "fullnameOverride": {"type": "string"},
+    "namespaceOverride": {"type": "string"},
+    "commonLabels": {"$ref": "#/$defs/labelsAnnotations"},
+    "commonAnnotations": {"$ref": "#/$defs/labelsAnnotations"},
+    "clusterDomain": {"type": "string", "default": "cluster.local"},
+    "common": {"type": "object", "additionalProperties": true},
+    "image": {
+      "type": "object",
+      "properties": {
+        "registry": {"type": "string", "default": "docker.io"},
+        "repository": {"type": "string", "default": "redis"},
+        "tag": {"type": "string", "default": "8.2.0-alpine"},
+        "digest": {"type": "string"},
+        "pullPolicy": {"type": "string", "enum": ["Always", "Never", "IfNotPresent"], "default": "IfNotPresent"},
+        "pullSecrets": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    },
+    "architecture": {
+      "type": "string",
+      "enum": ["standalone", "replication"],
+      "default": "standalone"
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "enabled": {"type": "boolean", "default": false},
+        "password": {"type": "string"},
+        "existingSecret": {"type": "string"},
+        "existingSecretPasswordKey": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "configuration": {"type": "string"},
+    "existingConfigmap": {"type": "string"},
+    "redis": {
+      "type": "object",
+      "properties": {
+        "containerPorts": {
+          "type": "object",
+          "properties": {
+            "redis": {"$ref": "#/$defs/portConfig"}
+          }
+        },
+        "serviceAccount": {
+          "type": "object",
+          "properties": {
+            "create": {"type": "boolean", "default": true},
+            "name": {"type": "string"},
+            "automountServiceAccountToken": {"type": "boolean", "default": false},
+            "annotations": {"$ref": "#/$defs/labelsAnnotations"}
+          },
+          "additionalProperties": false
+        },
+        "podLabels": {"$ref": "#/$defs/labelsAnnotations"},
+        "podAnnotations": {"$ref": "#/$defs/labelsAnnotations"},
+        "service": {"$ref": "#/$defs/serviceConfig"},
+        "persistence": {"$ref": "#/$defs/persistenceConfig"},
+        "resourcesPreset": {"type": "string", "enum": ["nano", "micro", "small", "medium", "large", "xlarge", "2xlarge", "none"], "default": "nano"},
+        "resources": {"$ref": "#/$defs/resourceConfig"},
+        "podSecurityContext": {"$ref": "#/$defs/securityContext"},
+        "containerSecurityContext": {"$ref": "#/$defs/securityContext"},
+        "livenessProbe": {"$ref": "#/$defs/probeConfig"},
+        "readinessProbe": {"$ref": "#/$defs/probeConfig"},
+        "startupProbe": {"$ref": "#/$defs/probeConfig"}
+      },
+      "additionalProperties": false
+    },
+    "master": {
+      "type": "object",
+      "properties": {
+        "containerPorts": {
+          "type": "object",
+          "properties": {
+            "redis": {"$ref": "#/$defs/portConfig"}
+          }
+        },
+        "service": {"$ref": "#/$defs/serviceConfig"},
+        "livenessProbe": {"$ref": "#/$defs/probeConfig"},
+        "readinessProbe": {"$ref": "#/$defs/probeConfig"},
+        "startupProbe": {"$ref": "#/$defs/probeConfig"},
+        "podLabels": {"$ref": "#/$defs/labelsAnnotations"},
+        "podAnnotations": {"$ref": "#/$defs/labelsAnnotations"},
+        "podAffinityPreset": {"type": "string"},
+        "podAntiAffinityPreset": {"type": "string", "default": "soft"},
+        "nodeAffinityPreset": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string"},
+            "key": {"type": "string"},
+            "values": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "affinity": {"type": "object", "additionalProperties": true},
+        "nodeSelector": {"type": "object", "additionalProperties": {"type": "string"}},
+        "tolerations": {"type": "array", "items": {"type": "object"}},
+        "topologySpreadConstraints": {"type": "array", "items": {"type": "object"}},
+        "schedulerName": {"type": "string"},
+        "persistence": {"$ref": "#/$defs/persistenceConfig"},
+        "extraVolumes": {"type": "array", "items": {"type": "object"}},
+        "extraVolumeMounts": {"type": "array", "items": {"type": "object"}},
+        "sidecars": {"type": "array", "items": {"type": "object"}},
+        "initContainers": {"type": "array", "items": {"type": "object"}},
+        "lifecycleHooks": {"type": "object", "additionalProperties": true},
+        "resourcesPreset": {"type": "string", "enum": ["nano", "micro", "small", "medium", "large", "xlarge", "2xlarge", "none"], "default": "nano"},
+        "resources": {"$ref": "#/$defs/resourceConfig"},
+        "podSecurityContext": {
+          "allOf": [
+            {"$ref": "#/$defs/securityContext"},
+            {
+              "properties": {
+                "fsGroupChangePolicy": {"type": "string", "default": "Always"},
+                "supplementalGroups": {"type": "array", "items": {"type": "integer"}},
+                "sysctls": {"type": "array", "items": {"type": "object"}}
+              }
+            }
+          ]
+        },
+        "containerSecurityContext": {"$ref": "#/$defs/securityContext"}
+      },
+      "additionalProperties": false
+    },
+    "replica": {
+      "type": "object",
+      "properties": {
+        "count": {"type": "integer", "minimum": 0, "default": 1},
+        "containerPorts": {
+          "type": "object",
+          "properties": {
+            "redis": {"$ref": "#/$defs/portConfig"}
+          }
+        },
+        "livenessProbe": {"$ref": "#/$defs/probeConfig"},
+        "readinessProbe": {"$ref": "#/$defs/probeConfig"},
+        "startupProbe": {"$ref": "#/$defs/probeConfig"},
+        "podLabels": {"$ref": "#/$defs/labelsAnnotations"},
+        "podAnnotations": {"$ref": "#/$defs/labelsAnnotations"},
+        "podAffinityPreset": {"type": "string"},
+        "podAntiAffinityPreset": {"type": "string", "default": "soft"},
+        "nodeAffinityPreset": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string"},
+            "key": {"type": "string"},
+            "values": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "affinity": {"type": "object", "additionalProperties": true},
+        "nodeSelector": {"type": "object", "additionalProperties": {"type": "string"}},
+        "tolerations": {"type": "array", "items": {"type": "object"}},
+        "topologySpreadConstraints": {"type": "array", "items": {"type": "object"}},
+        "schedulerName": {"type": "string"},
+        "persistence": {"$ref": "#/$defs/persistenceConfig"},
+        "extraVolumes": {"type": "array", "items": {"type": "object"}},
+        "extraVolumeMounts": {"type": "array", "items": {"type": "object"}},
+        "sidecars": {"type": "array", "items": {"type": "object"}},
+        "initContainers": {"type": "array", "items": {"type": "object"}},
+        "lifecycleHooks": {"type": "object", "additionalProperties": true},
+        "resourcesPreset": {"type": "string", "enum": ["nano", "micro", "small", "medium", "large", "xlarge", "2xlarge", "none"], "default": "nano"},
+        "resources": {"$ref": "#/$defs/resourceConfig"},
+        "podSecurityContext": {"$ref": "#/$defs/securityContext"},
+        "containerSecurityContext": {"$ref": "#/$defs/securityContext"},
+        "service": {"$ref": "#/$defs/serviceConfig"}
+      },
+      "additionalProperties": false
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "policies": {"type": "array", "items": {"type": "object"}}
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["architecture"],
+  "additionalProperties": false
+}

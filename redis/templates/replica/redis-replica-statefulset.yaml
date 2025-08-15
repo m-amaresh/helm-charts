@@ -1,0 +1,211 @@
+{{- include "redis.validateAuth" . -}}
+
+{{- if eq .Values.architecture "replication" }}
+apiVersion: {{ include "common.capabilities.statefulset.apiVersion" . }}
+kind: StatefulSet
+metadata:
+  name: {{ include "common.names.fullname" . }}-replica
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+    redis.io/role: replica
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replica.count }}
+  serviceName: {{ include "common.names.fullname" . }}-headless-replica
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+      redis.io/role: replica
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+        redis.io/role: replica
+        {{- if .Values.redis.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.redis.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap-configuration.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.redis.podAnnotations }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.redis.podAnnotations "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.commonAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- if .Values.redis.podSecurityContext.enabled }}
+      securityContext: {{- include "common.security.podSecurityContext" (dict "securityContext" .Values.redis.podSecurityContext "context" .) | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "redis.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.redis.serviceAccount.automountServiceAccountToken }}
+      enableServiceLinks: false
+      {{- if .Values.replica.schedulerName }}
+      schedulerName: {{ .Values.replica.schedulerName | quote }}
+      {{- end }}
+      {{- if .Values.replica.nodeSelector }}
+      nodeSelector: {{- include "common.tplvalues.render" ( dict "value" .Values.replica.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.replica.tolerations }}
+      tolerations: {{- include "common.tplvalues.render" (dict "value" .Values.replica.tolerations "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.replica.topologySpreadConstraints }}
+      topologySpreadConstraints: {{- include "common.tplvalues.render" (dict "value" .Values.replica.topologySpreadConstraints "context" .) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.replica.affinity }}
+      affinity: {{- include "common.tplvalues.render" ( dict "value" .Values.replica.affinity "context" $) | nindent 8 }}
+      {{- else }}
+      affinity:
+        {{- if .Values.replica.podAffinityPreset }}
+        podAffinity: {{- include "common.affinities.pods" (dict "type" .Values.replica.podAffinityPreset "component" "replica" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.replica.podAntiAffinityPreset }}
+        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" .Values.replica.podAntiAffinityPreset "component" "replica" "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.replica.nodeAffinityPreset.type }}
+        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" .Values.replica.nodeAffinityPreset.type "key" .Values.replica.nodeAffinityPreset.key "values" .Values.replica.nodeAffinityPreset.values) | nindent 10 }}
+        {{- end }}
+      {{- end }}
+      {{- if .Values.replica.initContainers }}
+      initContainers: {{- include "common.tplvalues.render" (dict "value" .Values.replica.initContainers "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: redis
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.redis.containerSecurityContext.enabled }}
+          securityContext: {{- include "common.security.containerSecurityContext" (dict "securityContext" .Values.redis.containerSecurityContext "context" .) | nindent 12 }}
+          {{- end }}
+          command:
+            - /opt/redis-config/startup-replica.sh
+          env:
+            - name: REDIS_REPLICATION_MODE
+              value: replica
+            {{- if .Values.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis.secretName" . }}
+                  key: {{ include "redis.secretPasswordKey" . }}
+            {{- end }}
+          ports:
+            - name: redis
+              containerPort: {{ .Values.replica.containerPorts.redis }}
+              protocol: TCP
+          {{- if .Values.redis.livenessProbe.enabled }}
+          livenessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.redis.livenessProbe "enabled") "context" $) | nindent 12 }}
+            exec:
+              command:
+                - sh
+                - -c
+                {{- if .Values.auth.enabled }}
+                - redis-cli -h localhost -p {{ .Values.replica.containerPorts.redis }} -a $REDIS_PASSWORD ping
+                {{- else }}
+                - redis-cli -h localhost -p {{ .Values.replica.containerPorts.redis }} ping
+                {{- end }}
+          {{- end }}
+          {{- if .Values.redis.readinessProbe.enabled }}
+          readinessProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.redis.readinessProbe "enabled") "context" $) | nindent 12 }}
+            exec:
+              command:
+                - sh
+                - -c
+                {{- if .Values.auth.enabled }}
+                - redis-cli -h localhost -p {{ .Values.replica.containerPorts.redis }} -a $REDIS_PASSWORD ping
+                {{- else }}
+                - redis-cli -h localhost -p {{ .Values.replica.containerPorts.redis }} ping
+                {{- end }}
+          {{- end }}
+          {{- if .Values.redis.startupProbe.enabled }}
+          startupProbe: {{- include "common.tplvalues.render" (dict "value" (omit .Values.redis.startupProbe "enabled") "context" $) | nindent 12 }}
+            exec:
+              command:
+                - sh
+                - -c
+                {{- if .Values.auth.enabled }}
+                - redis-cli -h localhost -p {{ .Values.replica.containerPorts.redis }} -a $REDIS_PASSWORD ping
+                {{- else }}
+                - redis-cli -h localhost -p {{ .Values.replica.containerPorts.redis }} ping
+                {{- end }}
+          {{- end }}
+          {{- if ne .Values.replica.resourcesPreset "none" }}
+          resources: {{- include "common.resources.preset" (dict "type" .Values.replica.resourcesPreset) | nindent 12 }}
+          {{- else if and .Values.replica.resources.limits.memory .Values.replica.resources.limits.cpu }}
+          resources: {{- toYaml .Values.replica.resources | nindent 12 }}
+          {{- end }}
+          {{- if .Values.replica.lifecycleHooks }}
+          lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.replica.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: redis-config
+              mountPath: /opt/redis-config
+            - name: redis-data
+              mountPath: /data
+            # Required writable directories for read-only root filesystem
+            - name: redis-tmp-conf
+              mountPath: /tmp
+            {{- if .Values.replica.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.replica.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.replica.sidecars }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.replica.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        - name: redis-config
+          configMap:
+            name: {{ include "common.names.fullname" . }}-configuration
+            defaultMode: 0755
+        # Writable directories for read-only root filesystem
+        - name: redis-tmp-conf
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        {{- if .Values.replica.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.replica.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.replica.persistence.existingClaim }}
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.replica.persistence.existingClaim }}
+        {{- else if not .Values.replica.persistence.enabled }}
+        - name: redis-data
+          emptyDir: {}
+        {{- end }}
+  {{- if and .Values.replica.persistence.enabled (not .Values.replica.persistence.existingClaim) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+        {{- if .Values.replica.persistence.annotations }}
+        annotations: {{- include "common.tplvalues.render" (dict "value" .Values.replica.persistence.annotations "context" $) | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+        {{- range .Values.replica.persistence.accessModes }}
+          - {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.replica.persistence.size | quote }}
+        {{- if .Values.replica.persistence.selector }}
+        selector: {{- include "common.tplvalues.render" (dict "value" .Values.replica.persistence.selector "context" $) | nindent 10 }}
+        {{- end }}
+        {{- if .Values.replica.persistence.storageClass }}
+        {{- if (eq "-" .Values.replica.persistence.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.replica.persistence.storageClass | quote }}
+        {{- end }}
+        {{- else if .Values.global.storageClass }}
+        {{- if (eq "-" .Values.global.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.global.storageClass | quote }}
+        {{- end }}
+        {{- end }}
+  {{- end }}
+{{- end }}

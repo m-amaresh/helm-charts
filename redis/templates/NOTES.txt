@@ -1,0 +1,97 @@
+🚀 Redis has been deployed successfully!
+
+Chart: {{ .Chart.Name }} v{{ .Chart.Version }}
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+📊 Deployment Summary:
+- Architecture: {{ .Values.architecture }}
+{{- if eq .Values.architecture "standalone" }}
+- Redis instances: 1 (standalone)
+{{- else }}
+- Redis instances: {{ add 1 .Values.replica.count }} (1 master + {{ .Values.replica.count }}{{- if eq (int .Values.replica.count) 1 }} replica{{- else }} replicas{{- end }})
+{{- end }}
+- Authentication: {{ if .Values.auth.enabled }}✅ Enabled{{ else }}❌ Disabled{{ end }}
+- Persistence: {{- if eq .Values.architecture "standalone" }}{{ if .Values.redis.persistence.enabled }}✅ Enabled ({{ .Values.redis.persistence.size }}){{ else }}❌ Disabled{{ end }}{{- else }}{{ if .Values.master.persistence.enabled }}✅ Enabled{{- if .Values.replica.persistence.enabled }} (Master: {{ .Values.master.persistence.size }}, Replica: {{ .Values.replica.persistence.size }}){{- else }} (Master: {{ .Values.master.persistence.size }}){{ end }}{{ else }}❌ Disabled{{ end }}{{- end }}
+
+🔗 Service Endpoints:
+{{- if eq .Values.architecture "standalone" }}
+- Redis Service: {{ .Release.Name }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:{{ .Values.redis.service.ports.redis }}
+- Redis Headless Service: {{ .Release.Name }}-headless.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:{{ .Values.redis.service.ports.redis }}
+{{- else }}
+- Master Service: {{ .Release.Name }}-master.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:{{ .Values.master.service.ports.redis }}
+- Master Headless Service: {{ .Release.Name }}-headless-master.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:{{ .Values.master.service.ports.redis }}
+- Replica Service: {{ .Release.Name }}-replica.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:{{ .Values.replica.service.ports.redis }}
+- Replica Headless Service: {{ .Release.Name }}-headless-replica.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }}:{{ .Values.replica.service.ports.redis }}
+{{- end }}
+
+{{- if .Values.auth.enabled }}
+
+🔑 To get the Redis password:
+export REDIS_PASSWORD=$(kubectl get secret {{ include "redis.secretName" . }} -o jsonpath="{.data.{{ include "redis.secretPasswordKey" . }}}" | base64 -d)
+{{- end }}
+
+🔍 To check Redis status:
+# Check Redis pods
+kubectl get pods -l app.kubernetes.io/name={{ include "redis.name" . }}
+
+# Test Redis connection
+{{- if eq .Values.architecture "standalone" }}
+{{- if .Values.auth.enabled }}
+kubectl exec {{ include "common.names.fullname" . }}-0 -- redis-cli -a "$REDIS_PASSWORD" ping
+{{- else }}
+kubectl exec {{ include "common.names.fullname" . }}-0 -- redis-cli ping
+{{- end }}
+{{- else }}
+{{- if .Values.auth.enabled }}
+kubectl exec {{ include "common.names.fullname" . }}-master-0 -- redis-cli -a "$REDIS_PASSWORD" ping
+{{- else }}
+kubectl exec {{ include "common.names.fullname" . }}-master-0 -- redis-cli ping
+{{- end }}
+{{- end }}
+
+{{- if eq .Values.architecture "replication" }}
+
+# Check replication status (master)
+{{- if .Values.auth.enabled }}
+kubectl exec {{ include "common.names.fullname" . }}-master-0 -- redis-cli -a "$REDIS_PASSWORD" info replication
+{{- else }}
+kubectl exec {{ include "common.names.fullname" . }}-master-0 -- redis-cli info replication
+{{- end }}
+
+# Connect to replica instance
+{{- if .Values.auth.enabled }}
+kubectl exec {{ include "common.names.fullname" . }}-replica-0 -- redis-cli -a "$REDIS_PASSWORD" info replication
+{{- else }}
+kubectl exec {{ include "common.names.fullname" . }}-replica-0 -- redis-cli info replication
+{{- end }}
+{{- end }}
+
+📝 To connect from within the cluster:
+{{- if eq .Values.architecture "standalone" }}
+{{- if .Values.auth.enabled }}
+redis-cli -h {{ .Release.Name }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.redis.service.ports.redis }} -a $REDIS_PASSWORD
+{{- else }}
+redis-cli -h {{ .Release.Name }}.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.redis.service.ports.redis }}
+{{- end }}
+{{- else }}
+# Connect to master (read/write)
+{{- if .Values.auth.enabled }}
+redis-cli -h {{ .Release.Name }}-master.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.master.service.ports.redis }} -a $REDIS_PASSWORD
+{{- else }}
+redis-cli -h {{ .Release.Name }}-master.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.master.service.ports.redis }}
+{{- end }}
+
+# Connect to replica (read-only)
+{{- if .Values.auth.enabled }}
+redis-cli -h {{ .Release.Name }}-replica.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.replica.service.ports.redis }} -a $REDIS_PASSWORD
+{{- else }}
+redis-cli -h {{ .Release.Name }}-replica.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.replica.service.ports.redis }}
+{{- end }}
+{{- end }}
+
+📚 For more information:
+- Chart Repository: {{ .Chart.Home }}
+- Documentation: https://redis.io/docs/
+
+Enjoy your Redis deployment! 🎯

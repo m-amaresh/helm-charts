@@ -1,0 +1,57 @@
+🚀 Redis Cluster has been deployed successfully!
+
+Chart: {{ .Chart.Name }} v{{ .Chart.Version }}
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+📊 Deployment Summary:
+- Architecture: cluster
+- Redis instances: {{ .Values.cluster.nodes }} ({{ div .Values.cluster.nodes (add .Values.cluster.replicas 1) }} masters + {{ sub .Values.cluster.nodes (div .Values.cluster.nodes (add .Values.cluster.replicas 1)) }} replicas)
+- Authentication: {{ if .Values.auth.enabled }}✅ Enabled{{ else }}❌ Disabled{{ end }}
+- Persistence: {{ if .Values.redis.persistence.enabled }}✅ Enabled ({{ .Values.redis.persistence.size }}){{ else }}❌ Disabled{{ end }}
+
+🔗 Service Endpoints:
+- Redis Cluster Service: {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.redis.service.ports.redis }}
+- Redis Cluster Headless Service: {{ include "common.names.fullname" . }}-headless.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }}:{{ .Values.redis.service.ports.redis }}
+
+{{- if .Values.auth.enabled }}
+{{- if .Values.auth.existingSecret }}
+
+🔐 Authentication: Using existing secret "{{ .Values.auth.existingSecret }}"
+{{- else }}
+
+🔐 Authentication: To get your password run:
+    export REDIS_PASSWORD=$(kubectl get secret --namespace {{ include "common.names.namespace" . }} {{ include "redis-cluster.secretName" . }} -o jsonpath="{.data.redis-password}" | base64 -d)
+{{- end }}
+{{- end }}
+
+🔍 To check Redis status:
+# Check Redis cluster pods
+kubectl get pods -l app.kubernetes.io/name=redis-cluster
+
+# Test Redis cluster connection
+{{- if .Values.auth.enabled }}
+kubectl exec {{ include "common.names.fullname" . }}-0 -- redis-cli -a "$REDIS_PASSWORD" cluster info
+{{- else }}
+kubectl exec {{ include "common.names.fullname" . }}-0 -- redis-cli cluster info
+{{- end }}
+
+📝 To connect from within the cluster:
+{{- if .Values.auth.enabled }}
+redis-cli -c -h {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.redis.service.ports.redis }} -a "$REDIS_PASSWORD"
+{{- else }}
+redis-cli -c -h {{ include "common.names.fullname" . }}.{{ include "common.names.namespace" . }}.svc.{{ .Values.clusterDomain }} -p {{ .Values.redis.service.ports.redis }}
+{{- end }}
+
+📚 For more information:
+- Chart Repository: https://github.com/m-amaresh/helm-charts
+- Documentation: https://redis.io/docs/
+
+{{- if .Values.cluster.nodes }}
+{{- if lt (int .Values.cluster.nodes) 6 }}
+
+⚠️  WARNING: Redis Cluster requires a minimum of 6 nodes for production use. You have configured {{ .Values.cluster.nodes }} nodes.
+{{- end }}
+{{- end }}
+
+Enjoy your Redis Cluster deployment! 🎯

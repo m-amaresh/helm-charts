@@ -1,0 +1,219 @@
+## Global parameters
+
+global:
+  ## @param global.imageRegistry Global Docker image registry
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  imagePullSecrets: []
+  ## @param global.storageClass Global StorageClass for Persistent Volume(s)
+  storageClass: ""
+
+## Common parameters
+
+## @param nameOverride String to partially override redis-cluster.fullname template
+nameOverride: ""
+## @param fullnameOverride String to fully override redis-cluster.fullname template
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+commonAnnotations: {}
+## @param clusterDomain Default Kubernetes cluster domain
+clusterDomain: cluster.local
+
+## Redis Image parameters
+
+image:
+  ## @param image.registry [default: REGISTRY_NAME] Redis® image registry
+  registry: docker.io
+  ## @param image.repository [default: REPOSITORY_NAME/redis] Redis® image repository
+  repository: redis
+  ## @param image.tag [default: TAG] Redis® image tag
+  tag: "8.2.0-alpine"
+  ## @param image.digest Redis® image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+  digest: ""
+  ## @param image.pullPolicy Redis® image pull policy
+  pullPolicy: IfNotPresent
+  ## @param image.pullSecrets Redis® image pull secrets
+  pullSecrets: []
+
+## Redis Cluster parameters
+
+cluster:
+  ## @param cluster.nodes Total number of Redis cluster nodes (must be >= 6)
+  nodes: 6
+  ## @param cluster.replicas Number of replicas per master
+  replicas: 1
+  ## @param cluster.enableGossipPortService Enable service for gossip port (cluster bus)
+  enableGossipPortService: true
+  ## @param cluster.init.enabled Enable cluster initialization via Job
+  init:
+    enabled: true
+
+## Redis Authentication parameters
+
+auth:
+  ## @param auth.enabled Enable password authentication
+  enabled: false
+  ## @param auth.password Redis® password (required when auth.enabled is true and existingSecret is not provided)
+  password: ""
+  ## @param auth.existingSecret The name of an existing secret with Redis® credentials
+  existingSecret: ""
+  ## @param auth.existingSecretPasswordKey Password key to be retrieved from existing secret
+  existingSecretPasswordKey: ""
+
+## Redis Configuration parameters
+
+## @param configuration Redis cluster configuration
+configuration: |-
+  cluster-enabled yes
+  cluster-config-file nodes.conf
+  cluster-node-timeout 15000
+  cluster-announce-port 6379
+  cluster-announce-bus-port 16379
+  
+  port 6379
+  dir /data
+  
+  appendonly yes
+  appendfilename "appendonly.aof"
+  appendfsync everysec
+  save ""
+  rdbcompression yes
+  rdbchecksum yes
+  
+  lazyfree-lazy-eviction yes
+  lazyfree-lazy-expire yes
+  lazyfree-lazy-server-del yes
+  tcp-keepalive 300
+  timeout 0
+  
+  loglevel notice
+  rename-command FLUSHDB ""
+  rename-command FLUSHALL ""
+  rename-command EVAL ""
+  rename-command DEBUG ""
+  rename-command CONFIG ""
+  
+  tcp-backlog 511
+
+## @param existingConfigmap Name of existing ConfigMap with Redis® configuration
+existingConfigmap: ""
+
+## Redis cluster node configuration
+
+redis:
+  containerPorts:
+    redis: 6379
+    gossip: 16379
+
+  serviceAccount:
+    create: true
+    name: ""
+    automountServiceAccountToken: false
+    annotations: {}
+
+  podLabels: {}
+  podAnnotations: {}
+
+  service:
+    type: ClusterIP
+    ports:
+      redis: 6379
+    annotations: {}
+    headless:
+      annotations: {}
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    existingClaim: ""
+    selector: {}
+    annotations: {}
+    medium: ""
+    sizeLimit: ""
+
+  resourcesPreset: "nano"
+  resources:
+    limits:
+      memory: ""
+      cpu: ""
+    requests:
+      memory: ""
+      cpu: ""
+
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    fsGroupChangePolicy: Always
+    supplementalGroups: []
+    sysctls: []
+
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+    successThreshold: 1
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 5
+    successThreshold: 1
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
+  ## Pod affinity and anti-affinity configuration
+  podAffinityPreset: ""
+  ## @param redis.podAntiAffinityPreset Pod anti-affinity preset. Ignored if `redis.affinity` is set. Allowed values: `soft` or `hard`
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
+  schedulerName: ""
+
+  extraVolumes: []
+  extraVolumeMounts: []
+  sidecars: []
+  initContainers: []
+  lifecycleHooks: {}
+
+## NetworkPolicy parameters
+
+networkPolicy:
+  policies: []

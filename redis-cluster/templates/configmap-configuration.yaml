@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" . }}-configuration
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: redis-cluster
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  startup.sh: |-
+    #!/bin/sh
+    set -e
+    mkdir -p /data /tmp
+    cp /opt/redis-config/redis.conf /tmp/redis.conf
+    
+    echo "" >> /tmp/redis.conf
+    echo "cluster-announce-ip $POD_IP" >> /tmp/redis.conf
+    
+    {{- if .Values.auth.enabled }}
+    echo "" >> /tmp/redis.conf
+    echo "requirepass $REDIS_PASSWORD" >> /tmp/redis.conf
+    echo "masterauth $REDIS_PASSWORD" >> /tmp/redis.conf
+    {{- end }}
+    
+    exec redis-server /tmp/redis.conf
+  redis.conf: |-
+    {{- if .Values.configuration }}
+    {{- .Values.configuration | nindent 4 }}
+    {{- else }}
+    cluster-enabled yes
+    cluster-config-file nodes.conf
+    cluster-node-timeout 15000
+    cluster-announce-port {{ .Values.redis.containerPorts.redis }}
+    cluster-announce-bus-port {{ .Values.redis.containerPorts.gossip }}
+    
+    port {{ .Values.redis.containerPorts.redis }}
+    dir /data
+    
+    appendonly yes
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    save ""
+    rdbcompression yes
+    rdbchecksum yes
+    
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    tcp-keepalive 300
+    timeout 0
+    
+    loglevel notice
+    tcp-backlog 511
+    
+    {{- end }}

@@ -1,0 +1,12 @@
+## @section Global Common Parameters
+global:
+  ## @param global.imageRegistry Global Docker image registry
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  imagePullSecrets: []
+  ## @param global.storageClass Global StorageClass for Persistent Volume(s)
+  storageClass: ""
+
+# Note: Resource presets are now defined directly in the common chart templates
+# following Bitnami's architectural pattern. This eliminates duplication and
+# ensures the presets are available to all charts that depend on the common chart.

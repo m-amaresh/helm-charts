@@ -1,0 +1,24 @@
+{{- range $policy := .Values.networkPolicy.policies }}
+{{- if $policy.enabled }}
+apiVersion: {{ include "common.capabilities.networkPolicy.apiVersion" $ }}
+kind: NetworkPolicy
+metadata:
+  name: {{ include "common.names.fullname" $ }}-{{ $policy.name }}
+  namespace: {{ include "common.names.namespace" $ | quote }}
+  labels: {{- include "common.labels.standard" $ | nindent 4 }}
+    {{- if $policy.labels }}
+    {{- include "common.tplvalues.render" (dict "value" $policy.labels "context" $) | nindent 4 }}
+    {{- end }}
+  {{- if or $policy.annotations $.Values.commonAnnotations }}
+  annotations:
+    {{- if $policy.annotations }}
+    {{- include "common.tplvalues.render" (dict "value" $policy.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if $.Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" (dict "value" $.Values.commonAnnotations "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- include "common.tplvalues.render" (dict "value" $policy.spec "context" $) | nindent 2 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,382 @@
+## Global parameters
+
+global:
+  ## @param global.imageRegistry Global Docker image registry
+  imageRegistry: ""
+  ## @param global.imagePullSecrets Global Docker registry secret names as an array
+  imagePullSecrets: []
+  ## @param global.storageClass Global StorageClass for Persistent Volume(s)
+  storageClass: ""
+
+## Common parameters
+
+## @param nameOverride String to partially override redis.fullname template
+nameOverride: ""
+## @param fullnameOverride String to fully override redis.fullname template
+fullnameOverride: ""
+## @param namespaceOverride String to fully override common.names.namespace
+namespaceOverride: ""
+## @param commonLabels Labels to add to all deployed objects
+commonLabels: {}
+## @param commonAnnotations Annotations to add to all deployed objects
+commonAnnotations: {}
+## @param clusterDomain Default Kubernetes cluster domain
+clusterDomain: cluster.local
+
+## Redis Image parameters
+
+image:
+  ## @param image.registry [default: REGISTRY_NAME] Redis® image registry
+  registry: docker.io
+  ## @param image.repository [default: REPOSITORY_NAME/redis] Redis® image repository
+  repository: redis
+  ## @param image.tag [default: TAG] Redis® image tag
+  tag: "8.2.0-alpine"
+  ## @param image.digest Redis® image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+  digest: ""
+  ## @param image.pullPolicy Redis® image pull policy
+  pullPolicy: IfNotPresent
+  ## @param image.pullSecrets Redis® image pull secrets
+  pullSecrets: []
+
+## Redis Architecture parameters
+
+## @param architecture Redis® architecture. Allowed values: `standalone` or `replication`
+architecture: standalone
+
+## Redis Authentication parameters
+
+auth:
+  ## @param auth.enabled Enable password authentication
+  enabled: false
+  ## @param auth.password Redis® password (required when auth.enabled is true and existingSecret is not provided)
+  password: ""
+  ## @param auth.existingSecret The name of an existing secret with Redis® credentials
+  existingSecret: ""
+  ## @param auth.existingSecretPasswordKey Password key to be retrieved from existing secret
+  existingSecretPasswordKey: ""
+
+## Redis Configuration parameters
+
+## @param configuration Redis configuration
+configuration: |-
+  # Persistence
+  appendonly yes
+  appendfilename "appendonly.aof"
+  appendfsync everysec
+  save ""
+  rdbcompression yes
+  rdbchecksum yes
+  
+  # Performance
+  lazyfree-lazy-eviction yes
+  lazyfree-lazy-expire yes
+  lazyfree-lazy-server-del yes
+  replica-lazy-flush yes
+  tcp-keepalive 300
+  timeout 0
+  
+  # Security
+  loglevel notice
+  rename-command FLUSHDB ""
+  rename-command FLUSHALL ""
+  rename-command EVAL ""
+  rename-command DEBUG ""
+  rename-command CONFIG ""
+  
+  # Networking
+  tcp-backlog 511
+
+## @param existingConfigmap Name of existing ConfigMap with Redis® configuration
+existingConfigmap: ""
+
+## Redis instance configuration
+
+redis:
+  containerPorts:
+    redis: 6379
+
+  serviceAccount:
+    create: true
+    name: ""
+    automountServiceAccountToken: false
+    annotations: {}
+
+  podLabels: {}
+  podAnnotations: {}
+
+  service:
+    type: ClusterIP
+    ports:
+      redis: 6379
+    annotations: {}
+
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    existingClaim: ""
+    selector: {}
+    annotations: {}
+    medium: ""
+    sizeLimit: ""
+
+  resourcesPreset: "nano"
+  resources:
+    limits:
+      memory: ""
+      cpu: ""
+    requests:
+      memory: ""
+      cpu: ""
+
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    privileged: false
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+    seccompProfile:
+      type: "RuntimeDefault"
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+    successThreshold: 1
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 5
+    successThreshold: 1
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
+
+## Master configuration (replication mode)
+
+master:
+  containerPorts:
+    redis: 6379
+    
+  service:
+    type: ClusterIP
+    ports:
+      redis: 6379
+    annotations: {}
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 5
+    successThreshold: 1
+    command: []
+    exec:
+      command: []
+    httpGet:
+      path: ""
+      port: ""
+      scheme: ""
+    tcpSocket:
+      port: ""
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 5
+    successThreshold: 1
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
+  podLabels: {}
+  podAnnotations: {}
+  
+  podAffinityPreset: ""
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
+  schedulerName: ""
+  
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    existingClaim: ""
+    selector: {}
+    annotations: {}
+    
+  extraVolumes: []
+  extraVolumeMounts: []
+  sidecars: []
+  initContainers: []
+  lifecycleHooks: {}
+
+  resourcesPreset: "nano"
+  resources:
+    limits:
+      memory: ""
+      cpu: ""
+    requests:
+      memory: ""
+      cpu: ""
+
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+    fsGroupChangePolicy: Always
+    supplementalGroups: []
+    sysctls: []
+
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+
+## Replica configuration (replication mode)
+
+replica:
+  count: 1
+  
+  containerPorts:
+    redis: 6379
+
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 5
+    successThreshold: 1
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 1
+    failureThreshold: 5
+    successThreshold: 1
+
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 22
+    successThreshold: 1
+
+  podLabels: {}
+  podAnnotations: {}
+  
+  podAffinityPreset: ""
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
+  schedulerName: ""
+  
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+    existingClaim: ""
+    selector: {}
+    annotations: {}
+    
+  extraVolumes: []
+  extraVolumeMounts: []
+  sidecars: []
+  initContainers: []
+  lifecycleHooks: {}
+
+  resourcesPreset: "nano"
+  resources:
+    limits:
+      memory: ""
+      cpu: ""
+    requests:
+      memory: ""
+      cpu: ""
+
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+    runAsUser: 1001
+
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+
+  service:
+    type: ClusterIP
+    ports:
+      redis: 6379
+
+## NetworkPolicy parameters
+
+networkPolicy:
+  policies: []

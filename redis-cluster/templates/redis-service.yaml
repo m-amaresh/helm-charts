@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: redis-cluster
+  {{- if or .Values.redis.service.annotations .Values.commonAnnotations }}
+  annotations:
+    {{- if .Values.redis.service.annotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.redis.service.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ .Values.redis.service.type }}
+  sessionAffinity: None
+  ports:
+    - name: tcp-redis
+      port: {{ .Values.redis.service.ports.redis }}
+      targetPort: redis
+      protocol: TCP
+      {{- if and (or (eq .Values.redis.service.type "NodePort") (eq .Values.redis.service.type "LoadBalancer")) .Values.redis.service.nodePorts.redis }}
+      nodePort: {{ .Values.redis.service.nodePorts.redis }}
+      {{- else if eq .Values.redis.service.type "ClusterIP" }}
+      nodePort: null
+      {{- end }}
+  selector: {{- include "common.labels.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis-cluster
+    

@@ -1,0 +1,41 @@
+{{- if eq .Values.architecture "replication" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.names.fullname" . }}-master
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+    redis.io/role: master
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+  {{- if .Values.master.service.annotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.master.service.annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.master.service.type }}
+  {{- if .Values.redis.service.clusterIP }}
+  clusterIP: {{ .Values.redis.service.clusterIP }}
+  {{- end }}
+  {{- if .Values.master.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.master.service.loadBalancerIP }}
+  {{- end }}
+  {{- if .Values.redis.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.redis.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if (or (eq .Values.master.service.type "LoadBalancer") (eq .Values.master.service.type "NodePort")) }}
+  externalTrafficPolicy: Cluster
+  {{- end }}
+  ports:
+    - name: tcp-redis
+      port: {{ .Values.master.service.ports.redis }}
+      targetPort: redis
+      protocol: TCP
+      {{- if (and (or (eq .Values.master.service.type "NodePort") (eq .Values.master.service.type "LoadBalancer")) .Values.master.service.nodePorts.redis) }}
+      nodePort: {{ .Values.master.service.nodePorts.redis }}
+      {{- end }}
+  selector: {{- include "common.labels.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+    redis.io/role: master
+{{- end }}

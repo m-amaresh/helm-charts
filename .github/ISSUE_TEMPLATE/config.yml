@@ -1,0 +1,12 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/m-amaresh/helm-charts/blob/main/README.md
+    about: Check the comprehensive documentation and README files
+  - name: 🔍 Search Existing Issues
+    url: https://github.com/m-amaresh/helm-charts/issues?q=is%3Aissue
+    about: Search through existing issues before creating a new one
+  - name: 📚 Application Documentation
+    url: https://github.com/m-amaresh/helm-charts#available-charts
+    about: For application-specific questions, please refer to the official documentation of the respective application
+    
